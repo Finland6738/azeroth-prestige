@@ -1,0 +1,49 @@
+name: In-game test report
+description: Report the result of a check done in the real WoW Forever client (spike M0 or a milestone checklist).
+title: "[In-game] "
+labels: ["in-game", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for the checks that only the real client can answer (the V1-V21 checks of the M0 probe, docs/specs/SPEC-01-platform-architecture.md, and the checklists in docs/checklists/).
+        **Privacy:** replace player, guild and account names with placeholders.
+  - type: input
+    id: check
+    attributes:
+      label: Check
+      description: The id of the check, for example V1 (ENCOUNTER_END values outside secrets) or the checklist and step, such as M2 step 4 or release step 12.
+      placeholder: "V1"
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: Game client
+      description: The `client:` and `locale:` lines of the `/azp debug` report (or of the probe export in M0).
+      placeholder: "1.60.1 (build 70170), enUS"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Works as the spec expects
+        - Works differently (details below)
+        - Does not work
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What you did and what you saw
+      description: Where you were (open world, dungeon, raid, battleground), in combat or not, in a group or alone.
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The /azp debug report or the probe export (optional, recommended)
+      description: Type `/azp debug` (or `/azpp export` during M0), press Ctrl+C in the box and paste it here. It contains no player or guild names.
+      render: text

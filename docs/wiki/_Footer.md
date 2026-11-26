@@ -1,0 +1,1 @@
+Azeroth Prestige · fan-made addon for World of Warcraft: Forever, not affiliated with Blizzard Entertainment · addon fatto dai fan, non affiliato a Blizzard Entertainment · [Repository](https://github.com/Finland6738/azeroth-prestige) · [Feedback](https://github.com/Finland6738/azeroth-prestige/discussions/categories/feedback)

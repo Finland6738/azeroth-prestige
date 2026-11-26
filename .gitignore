@@ -1,0 +1,29 @@
+# IDE settings
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# System files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Development session worktrees
+.claude/
+
+# The owner's working notes: the original brief and the private design chats (never published)
+prompt.txt
+.gpt-ideas/
+
+# Personal paths and names (see tools/local.example.ini)
+tools/local.ini
+
+# Output of the BigWigs packager (a local run of release.sh)
+.release/
+
+# Libraries are fetched from .pkgmeta by tools/fetch_libs.py
+AzerothPrestige/Libs/

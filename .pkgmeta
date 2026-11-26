@@ -1,0 +1,42 @@
+# Adapted from Azeroth Accord (.pkgmeta), same owner, GPL-3.0 (ADR 0013).
+package-as: AzerothPrestige
+
+# One source of truth for library versions: tools/fetch_libs.py (step M1.2) reads this block for local development and
+# CI; the BigWigs packager reads it for releases. Each entry is a whole repository at a tag (ADR 0006).
+# LibSerialize and LibDeflate are added only if the M0 check V14 finds C_EncodingUtil missing (SPEC-01 §9.5).
+externals:
+  AzerothPrestige/Libs/Ace3:
+    url: https://github.com/WoWUIDev/Ace3
+    tag: Release-r1403
+  AzerothPrestige/Libs/LibDataBroker-1.1:
+    url: https://github.com/tekkub/libdatabroker-1-1
+    tag: v1.1.4
+  AzerothPrestige/Libs/LibDBIcon-1.0:
+    url: https://github.com/wowace-clone/LibDBIcon-1.0
+    tag: v8.0.4
+
+# The addon lives in a subfolder of the repository: the packager moves it to the top level of the package.
+move-folders:
+  AzerothPrestige/AzerothPrestige: AzerothPrestige
+
+# What stays out of the package. The packager skips every dotfile and dot-folder (.git, .idea, .github, .gitignore, ...)
+# and every file git does not track, and a pattern here is matched against the path from the repository root with *
+# crossing folders. LICENSE, LICENSING.md and LICENSE-CONTENT.md are not listed on purpose: the licence texts must ship
+# with the addon (ADR 0012). tools/check_package.py (step M1.2) reads this file and fails if a licence would be left out
+# or a development file would ship.
+ignore:
+  - Tests
+  - docs
+  - tools
+  - assets
+  - .github
+  - .gitignore
+  - .luarc.json
+  - README.md
+  - README.it.md
+  - CHANGELOG.md
+  - ROADMAP.md
+  - CLAUDE.md
+  - CONTRIBUTING.md
+  - CODE_OF_CONDUCT.md
+  - prompt.txt
