@@ -1,6 +1,26 @@
 # Spike: the probe specification
 
-Milestone M0 answers, in the real WoW Forever client, the questions the design cannot answer offline: the checks V1-V21 of [SPEC-01 §3.3](../specs/SPEC-01-platform-architecture.md) (in Italian). This file is the **specification of the probe addon** `AzPr_Probe`: for every check, the exact calls and events, where to run it, what counts as **go** and what as **revise**, and which spec or ADR each outcome changes. The probe code arrives with step M0.2 and the checks with M0.3-M0.7 ([roadmap](../roadmap/M0-spike.md)); the results go to `docs/spike/M0-results.md` in step M0.9.
+Milestone M0 answers, in the real WoW Forever client, the questions the design cannot answer offline: the checks V1-V21 of [SPEC-01 §3.3](../specs/SPEC-01-platform-architecture.md) (in Italian). This file is the **specification of the probe addon** `AzPr_Probe`: for every check, the exact calls and events, where to run it, what counts as **go** and what as **revise**, and which spec or ADR each outcome changes. The skeleton (commands, check registry, records, export) is in place since step M0.2; the checks arrive with M0.3-M0.7 ([roadmap](../roadmap/M0-spike.md)); the results go to `docs/spike/M0-results.md` in step M0.9.
+
+## Install
+
+1. Copy `tools/local.example.ini` to `tools/local.ini` (git-ignored) and set `addons` to the `_forever_/Interface/AddOns` folder of your WoW installation.
+2. Run:
+
+```bash
+python -I -X utf8 tools/install_probe.py
+```
+
+3. In game, `/reload` (or restart the client). The chat shows "AzPr Probe: loaded"; `/azpp list` lists the 22 checks.
+
+Run the installer again after every update of the probe, then `/reload`: it replaces the `AzPr_Probe` folder, and the results in `AzPr_ProbeDB` survive. If the client says the addon is out of date, enable "Load out of date AddOns" and note it in the report.
+
+| File of `tools/probe/AzPr_Probe/` | Content | Since |
+|---|---|---|
+| `AzPr_Probe.lua` | safe calls, shapes, context detection, records and logs, commands, export frame, blocked-action log | M0.2 |
+| `Checks.lua` | the check registry V1-V21 and `L` (stubs that record `todo`) | M0.2 |
+
+Offline, `tools/check_probe.py` (run by `tools/check_docs.py`) verifies that the TOC declares Interface 16001, that the files it lists exist and that the registry has every check.
 
 ## Rules of the probe
 
@@ -9,7 +29,7 @@ Milestone M0 answers, in the real WoW Forever client, the questions the design c
 - Every returned value is tested with `issecretvalue` **before** any comparison, arithmetic, indexing or string use. A secret value is recorded as `secret` and dropped.
 - It never prints or stores player, guild, channel or realm names, nor GUIDs: only counts, types, field names, `self` / `other`, and booleans such as "matches the group member".
 - It uses the test addon-message prefix `AzPrP`, never the real prefix of the addon.
-- It never touches protected frames in combat and never calls protected functions. Hooks are post-hooks (`hooksecurefunc`, `HookScript`, the official callbacks); it never replaces a Blizzard function. It logs every `ADDON_ACTION_BLOCKED` and `ADDON_ACTION_FORBIDDEN` from login on.
+- It never touches protected frames in combat and never calls protected functions. Hooks are post-hooks (`hooksecurefunc`, `HookScript`, the official callbacks); it never replaces a Blizzard function. It logs every `ADDON_ACTION_BLOCKED` and `ADDON_ACTION_FORBIDDEN` from login on, under `logs.taint` (the addon only as `self` / `other`).
 - It never changes a CVar or a game setting by itself (V16 only reads them).
 
 ## Names, the API dump and "absent"
@@ -51,7 +71,8 @@ Each check stores one log line per context it was run in, tagged with the contex
 | `/azpp` or `/azpp list` | Lists the checks V1-V21 (plus `L` for content levels) with a short description, the contexts still missing and the last result |
 | `/azpp run <id>` | Runs one check now in the current context, for example `/azpp run V3`. Checks that need an event (an encounter, a turn-in, a match end) arm a watcher and complete when the event arrives; the chat line says so |
 | `/azpp export` | Opens a movable frame with every result and every log as plain text, already selected: press Ctrl+C and paste it into the *In-game test report* issue form |
-| `/azpp reset` | Clears every result and log (asks for confirmation; never needed between the contexts of one check) |
+| `/azpp reset` | Asks for confirmation: `/azpp reset confirm` clears every result and log (never needed between the contexts of one check) |
+| `/azpp help` | Lists the commands of the installed version |
 
 Steps M0.3-M0.7 add the helper commands their checks need (for example `/azpp ping guild|party|raid|whisper <name>|channel`, a burst and a lockdown snapshot in M0.5); they are documented in this file by those steps, and `/azpp help` always lists the ones the installed version has. A character name typed in a command is used once and never stored.
 
@@ -69,8 +90,13 @@ AzPr_ProbeDB = {
   logs = {
     V1 = { "DB | ENCOUNTER_END | encounterID=number encounterName=string difficultyID=number groupSize=number success=number encounterUnitStatus=table" },
   },
+  covered = {
+    V1 = { DB = true },
+  },
 }
 ```
+
+`covered` holds the contexts each check has been run in, apart from the logs, so that the cap on the logs never loses them; `/azpp list` shows the required ones still missing. A check that raises an error records `info` with the `error:` text.
 
 | Field | Content |
 |---|---|

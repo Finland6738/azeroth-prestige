@@ -56,8 +56,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: `docs/spike/README.md`
 - Scope: `tools/probe/AzPr_Probe/` (TOC 16001, adapted from Accord's `AzAc_Probe`), `/azpp list|run <id>|export|reset`, a check registry, results in `AzPr_ProbeDB`, an export frame with all results as text; `tools/install_probe.py` (copies the probe to the AddOns folder of `tools/local.ini`); `tools/local.example.ini` already has the path.
 - Done when:
-  - [ ] Offline: files, commands, registry and install script exist; `check_docs.py` passes.
+  - [x] Offline: files, commands, registry and install script exist; `check_docs.py` passes.
   - [ ] The probe loads on Forever and `/azpp list` lists the checks. *(in game)*
+  - *Done (offline):* [`tools/probe/AzPr_Probe/`](../../tools/probe/AzPr_Probe/) with the 22 checks as stubs, `tools/install_probe.py` and `tools/check_probe.py` (run by `check_docs.py`); nothing loaded in the real client yet.
 - Tests: a Python check that the probe TOC declares Interface 16001 and lists existing files.
 - Docs: `docs/spike/README.md` (how to install), CHANGELOG.
 - Real client: loading the probe.

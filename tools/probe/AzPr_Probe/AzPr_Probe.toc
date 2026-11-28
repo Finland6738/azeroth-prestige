@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: AzPr Probe (development only)
+## Notes: Throwaway spike addon for Azeroth Prestige (M0). Never distributed.
+## Author: Finland6738
+## Version: 0.2.0
+## SavedVariables: AzPr_ProbeDB
+
+# Adapted from Azeroth Accord (tools/probe/AzAc_Probe/AzAc_Probe.toc), same owner, GPL-3.0 (ADR 0013).
+AzPr_Probe.lua
+Checks.lua

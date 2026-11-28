@@ -15,6 +15,7 @@
   6. The rules of tools/check_pr_docs.py behave as documented (a few fixed cases).
   7. From M1 on: the addon TOC (tools/check_addon.py) and the release package (tools/check_package.py). Each check runs
      only once its tool exists, so the design-phase repository passes without them.
+  8. The throwaway probe addon (tools/check_probe.py, from M0.2): its TOC and check registry.
 
 Usage: python -I -X utf8 tools/check_docs.py      (exit code 0 = all good, 1 = problems, listed one per line)
 """
@@ -252,6 +253,7 @@ def main():
     check_rules(problems)
     check_optional("check_addon", problems)
     check_optional("check_package", problems)
+    check_optional("check_probe", problems)
     check_optional("release_notes", problems)
     check_optional("make_mockups", problems)
     for p in problems:
