@@ -406,6 +406,201 @@ function Probe.GroupUnits()
     return units, kind, size
 end
 
+-- Helpers for the tracker sources (since M0.6) -------------------------------------------------------------------------
+
+--- A value already in hand as it may be written in a log: numbers and booleans as values, everything else as its
+--- shape ("string", "secret", "nil", "table(3 keys)"). The text of a string is never written.
+function Probe.Value(v)
+    if Probe.IsSecret(v) then
+        return "secret"
+    end
+    local t = type(v)
+    if t == "number" or t == "boolean" then
+        return tostring(v)
+    end
+    if t == "table" then
+        return Probe.Shape(v)
+    end
+    return t
+end
+
+--- The first return of a game API as it may be written in a log: Probe.Value of it, or why there is none ("absent",
+--- "error", "secret", "nil").
+function Probe.ReadValue(fn, ...)
+    local shape, v = Probe.Read(fn, ...)
+    if v == nil then
+        return shape
+    end
+    return Probe.Value(v)
+end
+
+--- A string that is a fixed identifier of the game ("seller", "elite", "party", "ERR_ZONE_EXPLORED"), else nil. Only
+--- for values that can never be a name typed by a person: the caller says which return it is.
+function Probe.Token(v)
+    if Probe.IsSecret(v) or type(v) ~= "string" or #v > 48 then
+        return nil
+    end
+    return (v:match("^[a-z][a-z_%-]*$") or v:match("^[A-Z][A-Z0-9_]+$")) and v or nil
+end
+
+--- Every return of a game API: ok, a list of the returns and their count (nils kept). The values are not tested for
+--- secrets here: pass them to Probe.Value, or test each one with Probe.IsSecret before any other use.
+function Probe.Returns(fn, ...)
+    local function pack(ok, ...)
+        return ok, { ... }, select("#", ...)
+    end
+    return pack(Probe.Call(fn, ...))
+end
+
+--- The returns of a game API as "name=<value>" pairs; "absent" or "error" when the call fails. `names` lists the
+--- documented returns in order; further ones are written by position.
+function Probe.ReturnsText(names, fn, ...)
+    local ok, res, n = Probe.Returns(fn, ...)
+    if not ok then
+        return res[1] == "absent" and "absent" or "error"
+    end
+    local parts = {}
+    for i = 1, math.max(n, #names) do
+        parts[#parts + 1] = (names[i] or ("r" .. i)) .. "=" .. Probe.Value(res[i])
+    end
+    return #parts > 0 and table.concat(parts, " ") or "no return"
+end
+
+--- The fields of a returned table as "field=<value>" for the listed fields; the shape when it is not a table.
+function Probe.Fields(t, names)
+    if Probe.IsSecret(t) or type(t) ~= "table" then
+        return Probe.Value(t)
+    end
+    local parts = {}
+    for _, name in ipairs(names) do
+        local ok, v = pcall(function()
+            return t[name]
+        end)
+        parts[#parts + 1] = name .. "=" .. (ok and Probe.Value(v) or "error")
+    end
+    return table.concat(parts, " ")
+end
+
+--- The key of an enumeration value ("Complete" for Enum.PvPMatchState and 5), else the number or shape. Enum is a
+--- Blizzard Lua table: it is read at run time and may be missing.
+function Probe.EnumKey(enumName, value)
+    if Probe.IsSecret(value) then
+        return "secret"
+    end
+    local ok, key = pcall(function()
+        for k, v in pairs(Enum[enumName]) do
+            if v == value then
+                return k
+            end
+        end
+    end)
+    if ok and type(key) == "string" then
+        return key
+    end
+    return Probe.Value(value)
+end
+
+--- A format global string ("%1$s has defeated %2$s in a duel", "Discovered %s: %d experience gained") as an anchored
+--- Lua pattern, and the argument index of each capture. Nil when the text is not a usable format.
+function Probe.FormatPattern(format)
+    if Probe.IsSecret(format) or type(format) ~= "string" or format == "" then
+        return nil
+    end
+    local parts, order, nextIndex, pos = { "^" }, {}, 0, 1
+    local function literal(text)
+        parts[#parts + 1] = (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
+    end
+    while true do
+        local first, last, index, kind = format:find("%%(%d*)%$?([sd])", pos)
+        if not first then
+            break
+        end
+        literal(format:sub(pos, first - 1))
+        nextIndex = nextIndex + 1
+        order[#order + 1] = tonumber(index) or nextIndex
+        parts[#parts + 1] = kind == "d" and "(%d+)" or "(.-)"
+        pos = last + 1
+    end
+    literal(format:sub(pos))
+    parts[#parts + 1] = "$"
+    return table.concat(parts), order
+end
+
+--- Matches a message against the global string `globalName`. Returns the captures by argument index (empty when the
+--- string has none), or nil. The second return says why it cannot match: "secret", "absent" (the global is missing).
+--- The captures may hold names: compare them and drop them, never log or store them.
+function Probe.MatchGlobal(message, globalName)
+    if Probe.IsSecret(message) then
+        return nil, "secret"
+    end
+    local pattern, order = Probe.FormatPattern(_G[globalName])
+    if not pattern then
+        return nil, "absent"
+    end
+    if type(message) ~= "string" then
+        return nil
+    end
+    local found = { message:match(pattern) }
+    if found[1] == nil then
+        return nil
+    end
+    local captures = {}
+    for i, argument in ipairs(order) do
+        captures[argument] = found[i]
+    end
+    return captures
+end
+
+local sessionLines, sessionCount = {}, {}
+local SESSION_LINES = 80 -- lines Probe:LogOnce writes per check in one session
+
+--- Like Probe:Log, but each `key` once per session and at most SESSION_LINES lines per check: for frequent events (the
+--- counters keep everything else). False when nothing was written.
+function Probe:LogOnce(id, key, line)
+    sessionLines[id] = sessionLines[id] or {}
+    key = self.Context() .. "|" .. tostring(key)
+    if sessionLines[id][key] or (sessionCount[id] or 0) >= SESSION_LINES then
+        return false
+    end
+    sessionLines[id][key] = true
+    sessionCount[id] = (sessionCount[id] or 0) + 1
+    self:Log(id, line)
+    return true
+end
+
+--- The result of a check from its list of revise conditions, the contexts and observations still missing, and its
+--- summary: fail, else todo, else pass.
+function Probe.Verdict(problems, missing, summary)
+    if #problems > 0 then
+        return "fail", "revise: " .. table.concat(problems, ", ") .. " | " .. summary
+    end
+    if #missing > 0 then
+        return "todo", "missing: " .. table.concat(missing, ", ") .. " | " .. summary
+    end
+    return "pass", summary
+end
+
+local RECORD_DELAY = 5 -- seconds between an event and the record it updates
+
+--- Returns touch(): an event marks check `id` as changed, and its record is written once, RECORD_DELAY seconds later,
+--- from evaluate() (which returns result and details).
+function Probe:Toucher(id, evaluate)
+    local pending = false
+    local function write()
+        pending = false
+        self:Record(id, evaluate())
+    end
+    return function()
+        if pending then
+            return
+        end
+        pending = Probe.After(RECORD_DELAY, write)
+        if not pending then
+            write()
+        end
+    end
+end
+
 --- Runs one check inside pcall and stores its result.
 function Probe:Run(id)
     local check = self.checks[id]

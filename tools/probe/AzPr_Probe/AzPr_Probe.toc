@@ -2,7 +2,7 @@
 ## Title: AzPr Probe (development only)
 ## Notes: Throwaway spike addon for Azeroth Prestige (M0). Never distributed.
 ## Author: Finland6738
-## Version: 0.5.0
+## Version: 0.6.0
 ## SavedVariables: AzPr_ProbeDB
 
 # Adapted from Azeroth Accord (tools/probe/AzAc_Probe/AzAc_Probe.toc), same owner, GPL-3.0 (ADR 0013).
@@ -12,3 +12,9 @@ Checks_Encounters.lua
 Checks_AntiBoost.lua
 Checks_BadgeSurfaces.lua
 Checks_Messaging.lua
+Checks_Quests.lua
+Checks_Pvp.lua
+Checks_Exploration.lua
+Checks_Professions.lua
+Checks_Commerce.lua
+Checks_Levels.lua

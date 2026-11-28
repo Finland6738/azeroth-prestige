@@ -12,7 +12,10 @@
      SendAddonMessage, SendAddonMessageLogged or RegisterAddonMessagePrefix (direct, or as the function passed to
      Probe.Call / pcall) takes Probe.TEST_PREFIX, or a local PREFIX bound to it, as its prefix; and no file contains the
      real prefix of the addon.
-  7. The rules above behave as documented (a few fixed cases).
+  7. The probe only listens and asks (from M0.6): no Lua file of the probe names, outside comments and strings, a game
+     function that acts for the player (quests, duels, trades, mail, flights, professions, auctions, battlefields, the
+     encounter journal selection) or changes a setting.
+  8. The rules above behave as documented (a few fixed cases).
 
 Usage: python -I -X utf8 tools/check_probe.py      (exit code 0 = all good, 1 = problems, listed one per line)
 """
@@ -28,8 +31,9 @@ SAVED = "AzPr_ProbeDB"
 IDS = [f"V{n}" for n in range(1, 22)] + ["L"]
 ENTRY = re.compile(r'^\s*\{\s*"(V\d+|L)"\s*,', re.M)
 # The checks that have their code, step by step (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13; M0.5: V4, V5,
-# V14). A step that implements a check adds it here.
-IMPLEMENTED = ["V1", "V2", "V3", "V4", "V5", "V12", "V13", "V14", "V19", "V20", "V21"]
+# V14; M0.6: V6-V11, V18, L). A step that implements a check adds it here.
+IMPLEMENTED = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V18", "V19",
+               "V20", "V21", "L"]
 IMPLEMENT = re.compile(r'Implement\(\s*(?:"(\w+)"|(\w+))\s*,')
 CONSTANT = re.compile(r'^local\s+(\w+)\s*=\s*"(V\d+|L)"\s*$', re.M)
 GUARD = "_G.AzPr_Probe"
@@ -37,6 +41,25 @@ GUARD = "_G.AzPr_Probe"
 PREFIX_CALL = re.compile(r'\b(?:SendAddonMessage(?:Logged)?|RegisterAddonMessagePrefix)\s*[(,]\s*([^,\s)]+)')
 PREFIX_LOCAL = re.compile(r'^local\s+PREFIX\s*=\s*Probe\.TEST_PREFIX\b', re.M)
 REAL_PREFIX = "AZPRES"  # SPEC-06 section 12.1: the probe never sends or registers it
+# Game functions that act for the player or change a setting: the probe listens and asks, it never does any of these.
+# GetInboxText is here because reading a mail body marks the mail as read.
+ACTIONS = [
+    "AcceptQuest", "CompleteQuest", "GetQuestReward", "AbandonQuest", "SetAbandonQuest",
+    "StartDuel", "AcceptDuel", "CancelDuel",
+    "InitiateTrade", "AcceptTrade", "CancelTrade", "ClickTradeButton", "PickupTradeMoney", "SetTradeMoney",
+    "SendMail", "TakeInboxMoney", "TakeInboxItem", "DeleteInboxItem", "ReturnInboxItem", "AutoLootMailItem",
+    "GetInboxText",
+    "TakeTaxiNode",
+    "CraftRecipe", "OpenTradeSkill", "BuyTrainerService", "AbandonSkill", "ExpandSkillHeader", "CollapseSkillHeader",
+    "PostItem", "PostCommodity", "PlaceBid", "CancelAuction", "ConfirmPostItem", "ConfirmCommoditiesPurchase",
+    "JoinBattlefield", "AcceptBattlefieldPort", "LeaveBattlefield",
+    "EJ_SelectInstance", "EJ_SelectEncounter", "EJ_SelectTier", "EJ_SetDifficulty",
+    "SetCVar",
+]
+ACTION = re.compile(r"\b(" + "|".join(ACTIONS) + r")\b")
+# Lua comments and quoted strings, removed before looking for those names (the probe may write them in a log, and it
+# lists the Auction House functions it only tests for presence as strings)
+NOT_CODE = re.compile(r'--\[\[.*?\]\]|--[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'', re.S)
 
 
 def toc_problems(toc, files):
@@ -118,6 +141,16 @@ def prefix_problems(sources):
     return problems
 
 
+def action_problems(sources):
+    """sources: {file name: text} of every Lua file of the probe."""
+    problems = []
+    for name, text in sorted(sources.items()):
+        code = NOT_CODE.sub('""', text)
+        problems.extend(f"{name} uses {found}: the probe never acts for the player"
+                        for found in sorted(set(ACTION.findall(code))))
+    return problems
+
+
 def self_cases():
     good = f"## Interface: {INTERFACE}\n## SavedVariables: {SAVED}\n\n# comment\nA.lua\n"
     registry = "\n".join(f'    {{ "{i}", "x" }},' for i in IDS)
@@ -154,6 +187,13 @@ def self_cases():
                                             "B": 'local PREFIX = "AZPRES"\n'
                                                  "pcall(C_ChatInfo.SendAddonMessageLogged, PREFIX)\n"}), 3),
     ]
+    listening = ('-- never AcceptTrade\nlocal names = { "PostItem" }\nlocal text = \'SetCVar -- x\'\n'
+                 "local a = GetTradePlayerItemInfo(1) -- AcceptTrade\nlocal b = C_TradeSkillUI.GetRecipeInfo(1)\n")
+    cases += [
+        ("only listening", action_problems({"A": listening}), 0),
+        # a direct call, and a function passed to Probe.Call
+        ("acting", action_problems({"A": "AcceptTrade()\n", "B": "call(C_TradeSkillUI.CraftRecipe, 1)\n"}), 2),
+    ]
     return [f"self case '{label}' gave {len(got)} problem(s), expected {n}" for label, got, n in cases
             if len(got) != n]
 
@@ -179,6 +219,7 @@ def check(problems):
     found.extend(f"tools/probe/{NAME}: {p}" for p in implement_problems(sources))
     lua = {name: read(name) for name in sorted(files) if name.endswith(".lua")}
     found.extend(f"tools/probe/{NAME}: {p}" for p in prefix_problems(lua))
+    found.extend(f"tools/probe/{NAME}: {p}" for p in action_problems(lua))
     problems.extend(found)
 
 

@@ -112,8 +112,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: §3.3 V6-V11, V18; §7
 - Scope: `QUEST_TURNED_IN`, `C_QuestLog.IsQuestFlaggedCompleted`, quest level APIs; the Legacy system namespace and events (search the dump first); `GetPVPLifetimeStats`, `PVP_MATCH_COMPLETE`, `C_PvP.GetActiveMatchWinner`, `C_PvP.GetScoreInfo` (`killingBlows`), `DUEL_FINISHED` with the winner's system message; `C_MapExplorationInfo`, `UI_INFO_MESSAGE` "Discovered", `C_TaxiMap.GetAllTaxiNodes`; `GetProfessions`, `GetProfessionInfo`, skill-up and recipe events; Auction House presence, `GetInboxInvoiceInfo`, `TRADE_*`; **content levels**: what the client tells about a boss's, a quest's and a zone's level (risk R13).
 - Done when:
-  - [ ] Offline: the checks exist; `check_docs.py` passes.
+  - [x] Offline: the checks exist; `check_docs.py` passes.
   - [ ] V6-V11 and V18 answered; the source of content levels decided. *(in game)*
+  - *Done (offline):* V6 and V7 in [`Checks_Quests.lua`](../../tools/probe/AzPr_Probe/Checks_Quests.lua), V8 and V18 in [`Checks_Pvp.lua`](../../tools/probe/AzPr_Probe/Checks_Pvp.lua), V9 in [`Checks_Exploration.lua`](../../tools/probe/AzPr_Probe/Checks_Exploration.lua), V10 in [`Checks_Professions.lua`](../../tools/probe/AzPr_Probe/Checks_Professions.lua), V11 in [`Checks_Commerce.lua`](../../tools/probe/AzPr_Probe/Checks_Commerce.lua), `L` in [`Checks_Levels.lua`](../../tools/probe/AzPr_Probe/Checks_Levels.lua), with `/azpp legacy watch`; the API dump has no namespace for the Legacy system, so V7 searches the globals, the achievement API and the events. `tools/check_probe.py` expects their code and forbids acting for the player. Not run in the real client yet.
 - Tests: the probe's Python file check.
 - Docs: CHANGELOG.
 - Real client: everything.
