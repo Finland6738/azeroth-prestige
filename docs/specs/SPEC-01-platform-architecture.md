@@ -30,7 +30,7 @@
 
 ### 3.3 Checklist di verifica M0 (🔍)
 
-Ogni voce va testata sul client live con l'addon di prova `AzPr_Probe` (`tools/probe/`, mai distribuito, comandi `/azpp`). L'esito va annotato in `docs/spike/M0-results.md` (milestone M0, [roadmap](../roadmap/M0-spike.md)).
+Ogni voce va testata sul client live con l'addon di prova `AzPr_Probe` (`tools/probe/`, mai distribuito, comandi `/azpp`). La [specifica del probe](../spike/README.md) (in inglese) dà per ogni voce le chiamate e gli eventi esatti (segnalando quelli assenti dal dump delle API), i contesti in cui eseguirla, i criteri go / revise e le spec che cambiano con l'esito, oltre ai comandi e al formato dei record. L'esito va annotato in `docs/spike/M0-results.md` (milestone M0, [roadmap](../roadmap/M0-spike.md)).
 
 | # | Verifica | Impatto se negativa |
 | --- | --- | --- |

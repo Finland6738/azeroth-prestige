@@ -42,8 +42,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: SPEC-01 §3 (all), §9.5, §9.6; SPEC-03 sources column; SPEC-08 §14.4
 - Scope: `docs/spike/README.md` (in English): for each check V1-V21 the exact calls and events, where to run it (open world, dungeon, raid, battleground, in combat, during a boss), what counts as **go** and what as **revise**, and which spec or ADR each outcome changes. Group the checks into the probe areas of M0.3-M0.7. Add the probe's command list (`/azpp list|run <id>|export|reset`) and the record format `{id, result, details, build, time}`.
 - Done when:
-  - [ ] Every V check has calls, places, go/revise criteria and the spec it may change.
-  - [ ] `check_docs.py` passes.
+  - [x] Every V check has calls, places, go/revise criteria and the spec it may change.
+  - [x] `check_docs.py` passes.
+  - *Done:* [`docs/spike/README.md`](../spike/README.md) specifies V1-V21 plus `L` (content levels, R13), grouped by the areas of M0.3-M0.7, with the commands and the record format; names checked against the API dump (build 70170), with the ones it does not list marked. No probe code yet (M0.2).
 - Tests: none (documentation step); `check_docs.py`.
 - Docs: `docs/spike/README.md`, SPEC-01 §3.3 links to it, CHANGELOG.
 - Real client: nothing yet.
