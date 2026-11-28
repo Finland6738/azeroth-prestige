@@ -139,7 +139,8 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Depends on: M0.3-M0.7
 - Scope: `docs/checklists/M0.md`: install, the order of the runs (world, dungeon, raid, battleground, two clients, Hardcore), what to export and where to paste it (the *In-game test report* issue form); the list of V checks with a box each.
 - Done when:
-  - [ ] The checklist covers V1-V21 and can be followed without reading the code.
+  - [x] The checklist covers V1-V21 and can be followed without reading the code.
+  - *Done:* [`docs/checklists/M0.md`](../checklists/M0.md) with install, eleven runs, export and report, and a box for V1-V21 and `L`. Not run in the real client yet: that is the owner's run.
 - Tests: `check_docs.py`.
 - Docs: `docs/checklists/README.md` lists it, CHANGELOG.
 - Real client: the owner runs it.

@@ -6,6 +6,6 @@ Report each result with the *In-game test report* issue form, using the check's 
 
 | Checklist | Milestone | Status |
 |---|---|---|
-| `M0.md` | the probe: checks V1-V21 | written in step M0.8 |
+| [`M0.md`](M0.md) | the probe: checks V1-V21 and L | written (M0.8), not run yet |
 | `M1.md` … `M7.md` | one per milestone | written in the checklist step of each milestone |
 | `release.md` | everything still open, before `v1.0.0` | written in step M7.9 |
