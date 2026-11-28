@@ -149,6 +149,7 @@ pp = floor(pp)
 
 - `rv` è la versione del ruleset **in vigore al momento dell'evento**, salvata nell'evento. Ricalcolare con lo stesso `rv` dà sempre lo stesso risultato.
 - Un nuovo ruleset vale solo per gli eventi successivi.
+- Il formato del ruleset e la catena esatta, passo per passo (limiti `perKey` e `maxCount`, eventi annullati che non consumano DR né cap), sono in [SPEC-04 §10.7](SPEC-04-data-model.md).
 
 ### 8.2 Limiti e diminishing returns (DR) — solo per le azioni farmabili (✅)
 
@@ -175,7 +176,7 @@ Per le famiglie limitate, ripetere la **stessa chiave** (es. `VAN_DUEL_WIN:avver
 | 4ª | 25% |
 | 5ª e oltre | 10% (floor) |
 
-La finestra di default è il giorno (reset alle 00:00 server time). Le finestre sono definite per regola nel ruleset.
+La finestra di default è il giorno (reset alle 00:00 server time). Le finestre sono definite per regola nel ruleset: `day` o `week` (la settimana inizia il lunedì, proposta [Q23](SPEC-11-risks-open-questions.md)); l'evento salva l'indice del giorno `c.dy`, così DR e cap sono ricalcolabili ([SPEC-04 §10.7](SPEC-04-data-model.md)).
 
 ### 8.3 Group credit (dalla wiki)
 
@@ -187,6 +188,7 @@ La finestra di default è il giorno (reset alle 00:00 server time). Le finestre 
 
 - `eventId = hash(charKey, ruleId, contextKey, serverTimeBucket)`.
 - Il bucket è di 60 s. Per le una tantum il `contextKey` basta da solo, senza componente temporale.
+- La formula esatta (SHA-256 troncato a 64 bit), la forma del `contextKey` (soggetto e occorrenza) e i motivi di scarto sono in [SPEC-04 §10.5](SPEC-04-data-model.md).
 - Un evento con `eventId` già presente viene scartato: questo copre reconnect, `/reload` e doppia ricezione.
 
 ### 8.5 Regola anti-alt (✅)

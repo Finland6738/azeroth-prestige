@@ -13,7 +13,7 @@ They record *why* the project is built a certain way. A decision that changes is
 | [0003](0003-points-recomputed-from-events.md) | Points are recomputed from events with a versioned ruleset, never declared | accepted |
 | [0004](0004-trust-without-a-server.md) | Trust without a server: witnesses, trust levels and network-observed leaderboards | accepted |
 | [0005](0005-versioned-peer-to-peer-protocol.md) | A versioned peer-to-peer protocol on addon messages | accepted (to verify in M0) |
-| [0006](0006-embedded-ace3-savedvariables-and-schema-versions.md) | Embedded Ace3, SavedVariables and schema versions | accepted |
+| [0006](0006-embedded-ace3-savedvariables-and-schema-versions.md) | Embedded Ace3, SavedVariables and schema versions | accepted (updated in M1.1: no AceDB) |
 | [0007](0007-git-flow-and-automated-shipping.md) | Git flow and automated shipping of milestone steps | accepted |
 | [0008](0008-github-wiki-generated-from-docs-wiki.md) | The GitHub wiki: a user manual generated from `docs/wiki/` | accepted |
 | [0009](0009-automatic-rules-ci-docs-rule-wiki-sync.md) | Automatic rules: CI, a docs rule and the wiki sync | accepted |

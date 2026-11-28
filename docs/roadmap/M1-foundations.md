@@ -28,8 +28,9 @@
 - Spec: SPEC-01 §9, SPEC-02, SPEC-04, SPEC-05 §11.2, the ADRs 0003, 0006, 0010, 0011, 0017
 - Scope: in SPEC-01 and SPEC-04 (Italian): the module list of M1 with their public functions and the events of the internal bus; the exact shape of `AzerothPrestigeDB` and `AzerothPrestigeCharDB` schema 1 and the migration contract; the ruleset file format (`rules[ruleId] = { cat, points = function(ctx), once, family, window, cap }`), the `eventId` hash and its time bucket; the feature switches of M1 (none visible yet) and of later milestones; the locale key naming; which Accord files are copied (Compat, Config, Bus, Hash, Diagnostics, the test harness) and what changes in each.
 - Done when:
-  - [ ] Every module of M1.2-M1.10 has its interface written; schema 1 is complete; the ruleset format is fixed.
-  - [ ] Open questions that block M1 are in SPEC-11 with a proposal.
+  - [x] Every module of M1.2-M1.10 has its interface written; schema 1 is complete; the ruleset format is fixed.
+  - [x] Open questions that block M1 are in SPEC-11 with a proposal.
+  - *Done:* SPEC-01 §9.7-§9.11 (module interfaces, load order and life cycle, bus events, feature switches, locale keys, the files copied from Accord) and SPEC-04 §10 (schema 1 of both variables, compaction, the ledger event, `eventId`, the migration contract, the ruleset format and the exact scoring chain); new questions Q22 (debug mode and `/azp sim`) and Q23 (start of the week of the caps); ADR 0006 updated (AceDB not loaded). Parts that depend on the probe are marked 🔍. No code.
 - Tests: `check_docs.py`.
 - Docs: SPEC-01, SPEC-04, SPEC-11, CHANGELOG.
 - Real client: nothing.

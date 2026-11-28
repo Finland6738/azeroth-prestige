@@ -24,17 +24,17 @@ La numerazione delle sezioni (§) è quella del documento unico v0.4: un rimando
 | # | Documento | Sezioni | Contenuto |
 |---|---|---|---|
 | 00 | [Visione, ambito e decisioni](SPEC-00-vision-scope.md) | §1, §2, §4, §5, §22, §24 | executive summary, lavoro precedente, principi, glossario, registro delle decisioni D-01–D-46, fonti |
-| 01 | [Piattaforma e architettura](SPEC-01-platform-architecture.md) | §3, §9, §17, §19 | vincoli di Forever, verifiche V1–V21 di M0, moduli, struttura, TOC, librerie, regole di codice, prestazioni, compatibilità, API pubblica, policy |
+| 01 | [Piattaforma e architettura](SPEC-01-platform-architecture.md) | §3, §9, §17, §19 | vincoli di Forever, verifiche V1–V21 di M0, moduli, struttura, TOC, librerie, regole di codice, interfacce dei moduli di M1, eventi del bus, feature switch, chiavi di localizzazione, file presi da Accord, prestazioni, compatibilità, API pubblica, policy |
 | 02 | [Progressione e punteggio](SPEC-02-progression-scoring.md) | §6, §8 | categorie, ladder, apex a posti limitati, Global Prestige, albo; calcolo deterministico, DR e cap, group credit, idempotenza, anti-alt, anti-boost, contenuto di livello inferiore |
 | 03 | [Catalogo delle attività](SPEC-03-activity-catalog.md) | §7 | le regole `ruleId` delle 8 categorie, backfill, Prestige Contracts |
-| 04 | [Modello dati](SPEC-04-data-model.md) | §10 | `AzerothPrestigeCharDB`, `AzerothPrestigeDB`, limiti di dimensione |
+| 04 | [Modello dati](SPEC-04-data-model.md) | §10 | schema 1 di `AzerothPrestigeCharDB` e `AzerothPrestigeDB`, limiti di dimensione e compattazione, evento del ledger, `eventId`, contratto delle migrazioni, formato del ruleset |
 | 05 | [Ledger e fiducia](SPEC-05-ledger-trust.md) | §11 | modello di minaccia, livelli di fiducia, attestazioni, verified ratio, plausibilità |
 | 06 | [Protocollo di rete](SPEC-06-network-protocol.md) | §12 | trasporto, tipi di messaggio, discovery sul mega-realm, merge dei profili, persistenza |
 | 07 | [Classifiche e Hall of Prestige](SPEC-07-leaderboards-hall.md) | §13 | viste e filtri, trasparenza, assegnazione settimanale degli apex, Hall of Prestige, memoriale Hardcore |
 | 08 | [Interfaccia e badge](SPEC-08-ui-badges.md) | §14, §16, §18 | finestra, profilo, badge e superfici, grafica e art bible, avviso di boost, impostazioni, ricompense, localizzazione e accessibilità |
 | 09 | [Celebrazioni](SPEC-09-celebrations.md) | §15 | decisioni, macchina a stati, condizioni di blocco, presentazione |
 | 10 | [Qualità, test e roadmap](SPEC-10-quality-release.md) | §20, §21 | test offline e in gioco, casi di accettazione A1–A19, milestone e versioni |
-| 11 | [Rischi e domande aperte](SPEC-11-risks-open-questions.md) | ex §23 | rischi R1–R14, domande Q1–Q21 con risposta proposta e punto unico |
+| 11 | [Rischi e domande aperte](SPEC-11-risks-open-questions.md) | ex §23 | rischi R1–R14, domande Q1–Q23 con risposta proposta e punto unico |
 
 Altri documenti: [decisioni architetturali (ADR)](../adr/README.md) · [roadmap e step](../roadmap/README.md) · [manuale utente (wiki)](../wiki/Home.md) · [checklist in gioco](../checklists/README.md). Lo stile dell'interfaccia (`ui-style.md`) arriva con lo step M3.1.
 

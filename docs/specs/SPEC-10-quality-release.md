@@ -19,7 +19,7 @@
 ### 20.2 Test in gioco
 
 - `/azp debug`: pannello con stato restrizioni, coda di rete, coda celebrazioni, profili noti.
-- `/azp sim <ruleId> [n]`: genera eventi finti (solo in modalità debug, marcati `tl=0`, mai trasmessi).
+- `/azp sim <ruleId> [n]`: genera eventi finti (solo in modalità debug, marcati `tl=0` e `src="SIM"`, mai trasmessi). La modalità debug è la build di sviluppo; `/azp sim clear` li toglie (proposta [Q22](SPEC-11-risks-open-questions.md), [SPEC-01 §9.7.15](SPEC-01-platform-architecture.md)).
 - `/azp celebrate test <tier>`: anteprima delle celebrazioni.
 - CVar di restrizione forzata (V16) per testare il comportamento in lockdown.
 
