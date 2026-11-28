@@ -84,6 +84,7 @@ local function db()
     d.results = d.results or {}
     d.logs = d.logs or {}
     d.covered = d.covered or {}
+    d.stats = d.stats or {}
     return d
 end
 Probe.DB = db
@@ -106,6 +107,7 @@ local function now()
     local ok, t = call(time)
     return ok and t or 0
 end
+Probe.Time = now
 
 --- A boolean API read safely: true or false, nil when absent, failed or secret.
 local function flag(fn, ...)
@@ -202,6 +204,206 @@ function Probe:Log(id, line)
     while #l > LOG_MAX do
         table.remove(l, 1)
     end
+end
+
+--- The aggregated counters of a check, kept in AzPr_ProbeDB.stats[id] so that they survive /reload. Always ask for the
+--- table again (never keep it): /azpp reset replaces it.
+function Probe:Stats(id)
+    local stats = db().stats
+    stats[id] = stats[id] or {}
+    return stats[id]
+end
+
+-- Helpers for the checks (since M0.3) ----------------------------------------------------------------------------------
+
+--- The first value returned by a game API, read safely: its shape ("absent", "error", "secret", "nil" or the Lua type)
+--- and the value itself only when it is readable. A secret value is never returned.
+function Probe.Read(fn, ...)
+    if type(fn) ~= "function" then
+        return "absent", nil
+    end
+    local ok, v = pcall(fn, ...)
+    if not ok then
+        return "error", nil
+    end
+    if Probe.IsSecret(v) then
+        return "secret", nil
+    end
+    if v == nil then
+        return "nil", nil
+    end
+    return type(v), v
+end
+
+--- A readable boolean as "true" / "false", anything else as its shape ("secret", "nil", "absent", ...).
+function Probe.BoolText(fn, ...)
+    local shape, v = Probe.Read(fn, ...)
+    if shape == "boolean" then
+        return tostring(v)
+    end
+    return shape
+end
+
+--- Adds n (default 1) to t[key].
+function Probe.Tally(t, key, n)
+    key = tostring(key)
+    t[key] = (t[key] or 0) + (n or 1)
+end
+
+--- A tally table as "a=1,b=2" (sorted keys), "-" when empty.
+function Probe.TallyText(t)
+    local keys = {}
+    for k in pairs(t or {}) do
+        keys[#keys + 1] = tostring(k)
+    end
+    table.sort(keys)
+    for i, k in ipairs(keys) do
+        keys[i] = k .. "=" .. tostring(t[k])
+    end
+    return #keys > 0 and table.concat(keys, ",") or "-"
+end
+
+--- The kind of a unit token with its digits replaced ("party3" -> "partyN", "nameplate7target" -> "nameplateNtarget"):
+--- a token, never a name. Anything that does not look like a token is "other".
+function Probe.TokenKind(unit)
+    if Probe.IsSecret(unit) then
+        return "secret"
+    end
+    if unit == nil then
+        return "nil"
+    end
+    if type(unit) ~= "string" then
+        return type(unit)
+    end
+    if unit:match("^[a-z]+%d*[a-z]*$") then
+        return (unit:gsub("%d+", "N"))
+    end
+    return "other"
+end
+
+--- A key that may be written in a log: it looks like a field name or a unit token (it starts with a lowercase ASCII
+--- letter). Player names always start with a capital letter, so they never pass.
+local function fieldName(k)
+    return type(k) == "string" and #k <= 32 and k:match("^[a-z][%w_]*$") ~= nil
+end
+
+--- A table described without its values: number of keys, the field names (only those that pass fieldName, the others
+--- counted by type), the shapes of the values and, for nested tables, the same one level down. Returns the text and
+--- the number of secret keys and values found (both levels).
+function Probe.TableShape(t)
+    local secrets = 0
+    local function describe(tbl, nested)
+        local n, names, keyKinds, values, inner = 0, {}, {}, {}, nil
+        for k, v in pairs(tbl) do
+            n = n + 1
+            if Probe.IsSecret(k) then
+                secrets = secrets + 1
+                Probe.Tally(keyKinds, "secret")
+            elseif fieldName(k) then
+                names[#names + 1] = k
+            else
+                Probe.Tally(keyKinds, type(k))
+            end
+            if Probe.IsSecret(v) then
+                secrets = secrets + 1
+                Probe.Tally(values, "secret")
+            else
+                Probe.Tally(values, type(v))
+                if type(v) == "table" and not nested then
+                    local text = describe(v, true)
+                    inner = inner or text -- the first nested table is written, the others only counted
+                end
+            end
+        end
+        table.sort(names)
+        while #names > 12 do
+            table.remove(names)
+        end
+        local text = string.format("table(%d keys; fields %s; other keys %s; values %s", n,
+            #names > 0 and table.concat(names, ",") or "-", Probe.TallyText(keyKinds), Probe.TallyText(values))
+        if inner then
+            text = text .. "; first nested " .. inner
+        end
+        return text .. ")"
+    end
+    local ok, text = pcall(describe, t, false)
+    if not ok then
+        return "table(" .. Probe.ErrorText(text) .. ")", secrets
+    end
+    return text, secrets
+end
+
+--- A clock in milliseconds for delays and costs inside one session (debugprofilestop, else GetTime).
+function Probe.Ms()
+    local shape, ms = Probe.Read(debugprofilestop)
+    if shape == "number" then
+        return ms
+    end
+    local shapeT, s = Probe.Read(GetTime)
+    return shapeT == "number" and s * 1000 or 0
+end
+
+--- Runs fn after `seconds` (C_Timer.After); an error inside fn is logged under logs.errors. False when there is no timer.
+function Probe.After(seconds, fn)
+    if not (C_Timer and type(C_Timer.After) == "function") then
+        return false
+    end
+    return (pcall(C_Timer.After, seconds, function()
+        local ok, err = pcall(fn)
+        if not ok then
+            Probe:Log("errors", "timer " .. Probe.ErrorText(err))
+        end
+    end))
+end
+
+--- A frame that calls handler(event, ...) for `events` (and for `unitEvents` = { EVENT = "unit" }, registered with
+--- RegisterUnitEvent when the client has it). The handler runs in pcall; its errors go to logs.errors.
+function Probe:Watch(events, handler, unitEvents)
+    local ok, f = call(CreateFrame, "Frame")
+    if not ok or not f then
+        return nil
+    end
+    for _, event in ipairs(events) do
+        pcall(f.RegisterEvent, f, event)
+    end
+    for event, unit in pairs(unitEvents or {}) do
+        local done = type(f.RegisterUnitEvent) == "function" and pcall(f.RegisterUnitEvent, f, event, unit)
+        if not done then
+            pcall(f.RegisterEvent, f, event)
+        end
+    end
+    pcall(f.SetScript, f, "OnEvent", function(_, event, ...)
+        local okH, err = pcall(handler, event, ...)
+        if not okH then
+            Probe:Log("errors", tostring(event) .. " " .. Probe.ErrorText(err))
+        end
+    end)
+    return f
+end
+
+--- The unit tokens of the other group members (never "player"), the group kind ("solo", "party", "raid") and its size.
+function Probe.GroupUnits()
+    local _, inRaid = Probe.Read(IsInRaid)
+    local _, inGroup = Probe.Read(IsInGroup)
+    local _, size = Probe.Read(GetNumGroupMembers)
+    size = type(size) == "number" and size or 0
+    local units, kind = {}, "solo"
+    if inRaid == true then
+        kind = "raid"
+        for i = 1, math.min(size, 40) do
+            local unit = "raid" .. i
+            local _, isMe = Probe.Read(UnitIsUnit, unit, "player")
+            if isMe ~= true then
+                units[#units + 1] = unit
+            end
+        end
+    elseif inGroup == true or size > 1 then
+        kind = "party"
+        for i = 1, math.min(math.max(size - 1, 0), 4) do
+            units[#units + 1] = "party" .. i
+        end
+    end
+    return units, kind, size
 end
 
 --- Runs one check inside pcall and stores its result.

@@ -70,8 +70,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: §3.3 V1, V19-V21; §7.2; §8.6.1
 - Scope: log `ENCOUNTER_START`/`ENCOUNTER_END` payloads with `issecretvalue` per field, `BOSS_KILL`, `UnitIsAFK`, `UnitLevel` of group members and of hostile units far above the player (`-1`), `C_UnitAuras` `sourceUnit` on the player in and out of combat, `UnitIsUnit("nameplateNtarget", ...)` and `targettarget` outside instances; timing of `GROUP_ROSTER_UPDATE` and `UNIT_LEVEL`.
 - Done when:
-  - [ ] Offline: the checks and their commands exist; `check_docs.py` passes.
+  - [x] Offline: the checks and their commands exist; `check_docs.py` passes.
   - [ ] V1, V19, V20, V21 answered with evidence. *(in game: a dungeon run, a group with a higher-level player, open-world assist)*
+  - *Done (offline):* V1 in [`Checks_Encounters.lua`](../../tools/probe/AzPr_Probe/Checks_Encounters.lua), V19-V21 and `/azpp assist` in [`Checks_AntiBoost.lua`](../../tools/probe/AzPr_Probe/Checks_AntiBoost.lua), counters in `AzPr_ProbeDB.stats`; `tools/check_probe.py` checks the load order and which checks have code. Not run in the real client yet.
 - Tests: the probe's Python file check.
 - Docs: `docs/spike/README.md`, CHANGELOG.
 - Real client: everything.

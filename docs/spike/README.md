@@ -1,6 +1,6 @@
 # Spike: the probe specification
 
-Milestone M0 answers, in the real WoW Forever client, the questions the design cannot answer offline: the checks V1-V21 of [SPEC-01 §3.3](../specs/SPEC-01-platform-architecture.md) (in Italian). This file is the **specification of the probe addon** `AzPr_Probe`: for every check, the exact calls and events, where to run it, what counts as **go** and what as **revise**, and which spec or ADR each outcome changes. The skeleton (commands, check registry, records, export) is in place since step M0.2; the checks arrive with M0.3-M0.7 ([roadmap](../roadmap/M0-spike.md)); the results go to `docs/spike/M0-results.md` in step M0.9.
+Milestone M0 answers, in the real WoW Forever client, the questions the design cannot answer offline: the checks V1-V21 of [SPEC-01 §3.3](../specs/SPEC-01-platform-architecture.md) (in Italian). This file is the **specification of the probe addon** `AzPr_Probe`: for every check, the exact calls and events, where to run it, what counts as **go** and what as **revise**, and which spec or ADR each outcome changes. The skeleton (commands, check registry, records, export) is in place since step M0.2; V1 and V19-V21 have their code since M0.3; the other checks arrive with M0.4-M0.7 ([roadmap](../roadmap/M0-spike.md)); the results go to `docs/spike/M0-results.md` in step M0.9.
 
 ## Install
 
@@ -17,10 +17,12 @@ Run the installer again after every update of the probe, then `/reload`: it repl
 
 | File of `tools/probe/AzPr_Probe/` | Content | Since |
 |---|---|---|
-| `AzPr_Probe.lua` | safe calls, shapes, context detection, records and logs, commands, export frame, blocked-action log | M0.2 |
-| `Checks.lua` | the check registry V1-V21 and `L` (stubs that record `todo`) | M0.2 |
+| `AzPr_Probe.lua` | safe calls, shapes, context detection, records and logs, commands, export frame, blocked-action log; since M0.3 also the helpers of the checks (`Probe.Read`, table shapes, tallies, unit token kinds, timers, event frames, the group's unit tokens) and the counters in `stats` | M0.2 |
+| `Checks.lua` | the check registry V1-V21 and `L` (stubs that record `todo` until their step) | M0.2 |
+| `Checks_Encounters.lua` | V1: encounter events, AFK of the group, loading screens, fallback sources | M0.3 |
+| `Checks_AntiBoost.lua` | V19, V20, V21: levels, aura sources, plate comparisons, the `/azpp assist` window | M0.3 |
 
-Offline, `tools/check_probe.py` (run by `tools/check_docs.py`) verifies that the TOC declares Interface 16001, that the files it lists exist and that the registry has every check.
+Offline, `tools/check_probe.py` (run by `tools/check_docs.py`) verifies that the TOC declares Interface 16001, that the files it lists exist and load in order (core, registry, then the `Checks_<area>.lua` files), that the registry has every check, and that exactly the checks of the steps done so far (V1, V19, V20, V21) have their code.
 
 ## Rules of the probe
 
@@ -73,6 +75,7 @@ Each check stores one log line per context it was run in, tagged with the contex
 | `/azpp export` | Opens a movable frame with every result and every log as plain text, already selected: press Ctrl+C and paste it into the *In-game test report* issue form |
 | `/azpp reset` | Asks for confirmation: `/azpp reset confirm` clears every result and log (never needed between the contexts of one check) |
 | `/azpp help` | Lists the commands of the installed version |
+| `/azpp assist [seconds\|stop]` | (M0.3, V21) Scans the visible plates twice a second for `seconds` (default 60, at most 300), so that V21 is measured in combat without typing; `stop` ends the window early. It ends with a summary line and records V21 |
 
 Steps M0.3-M0.7 add the helper commands their checks need (for example `/azpp ping guild|party|raid|whisper <name>|channel`, a burst and a lockdown snapshot in M0.5); they are documented in this file by those steps, and `/azpp help` always lists the ones the installed version has. A character name typed in a command is used once and never stored.
 
@@ -93,10 +96,13 @@ AzPr_ProbeDB = {
   covered = {
     V1 = { DB = true },
   },
+  stats = {
+    V1 = { starts = 4, ends = 4, bossKills = 3, ctx = { DB = { ends = 4, kills = 3, wipes = 1 } } },
+  },
 }
 ```
 
-`covered` holds the contexts each check has been run in, apart from the logs, so that the cap on the logs never loses them; `/azpp list` shows the required ones still missing. A check that raises an error records `info` with the `error:` text.
+`covered` holds the contexts each check has been run in, apart from the logs, so that the cap on the logs never loses them; `/azpp list` shows the required ones still missing. `stats` (since M0.3) holds the counters a check adds up across contexts and sessions (for example `stats.V1.ctx.DB.kills`, `stats.V20.ctx.WC.srcSecret`): numbers and tallies only, never a name; the result of the check is computed from them. A check that raises an error records `info` with the `error:` text; an error inside an event handler or a timer is logged under `logs.errors`.
 
 | Field | Content |
 |---|---|
@@ -131,6 +137,7 @@ The go / revise decision of each area of the [M0 exit criterion](../roadmap/M0-s
 - **Go:** `ENCOUNTER_END` arrives once per pull in dungeons and raids; the five spec fields are never secret; `success` is `1` on a kill and `0` on a wipe; `encounterID` is the same as `BOSS_KILL`'s and stable across runs; `UnitIsAFK` of group members is readable at that moment.
 - **Revise:** any of the five fields secret, the event missing in a context, or `success` unreliable: Delver moves to `BOSS_KILL` plus the saved-instance or raid-lock state; `UnitIsAFK` secret: the "not AFK" eligibility is measured another way or dropped.
 - **Changes:** [SPEC-03 §7.2](../specs/SPEC-03-activity-catalog.md) (Delver source and eligibility), [SPEC-02 §8.6.2](../specs/SPEC-02-progression-scoring.md) (the boss window `ENCOUNTER_START`..`END`), [SPEC-09 §15.3](../specs/SPEC-09-celebrations.md) (encounter blocking condition), risk R1 of [SPEC-11](../specs/SPEC-11-risks-open-questions.md); a Delver redesign gets a new ADR.
+- **How the probe runs it (M0.3, `Checks_Encounters.lua`):** the events are watched from login on, so there is nothing to arm: just play. `ENCOUNTER_START`, `ENCOUNTER_END` and `BOSS_KILL` each log one line with every payload field (numbers as values, strings as `string`, `encounterUnitStatus` by shape: keys, field names, value types, secret count), tagged `enc=DB` or `enc=RB` from the instance type; `ENCOUNTER_END` adds a second line with `UnitIsAFK`, `UnitIsConnected` and `UnitIsDeadOrGhost` of the player and of every member as tallies, `IsEncounterInProgress`, `HasSecretRestrictions` and `GetInstanceInfo()` without the name. The open encounter is kept in `stats`, so a loading screen or `/reload` during a pull is logged (`PLAYER_ENTERING_WORLD`, then the state 5 seconds later) and counted as `LS` when the encounter ends (or never does). After a kill the probe also logs `C_RaidLocks.IsEncounterComplete(instanceID, encounterID, difficultyID)`, calls `RequestRaidInfo()` and logs the shape of the saved instances at `UPDATE_INSTANCE_INFO`, and counts `CHAT_MSG_SYSTEM` (and how many of them are secret) and `ENCOUNTER_LOOT_RECEIVED` (shapes only: a field may hold a player name) for 10 seconds. `BOSS_KILL` is paired with the `ENCOUNTER_END` within 10 seconds, before or after, and the delay and the ids are compared. Every `ENCOUNTER_END` records V1 and prints one chat line. `/azpp run V1` logs a snapshot (open encounter, state, kills by encounter id) and the summary. **Result:** `fail` as soon as one of the five spec fields was secret, `success` was not 0 or 1, the `BOSS_KILL` id differed, a `BOSS_KILL` came without `ENCOUNTER_END`, an `ENCOUNTER_END` came twice, `UnitIsAFK` was secret or an encounter was lost across a loading screen; `pass` when none of these happened, DB, RB and LS are covered and there is at least one kill in DB and one in RB; `todo` otherwise.
 
 ### V19: `UnitLevel` of group members and of far higher hostile players
 
@@ -139,6 +146,7 @@ The go / revise decision of each area of the [M0 exit criterion](../roadmap/M0-s
 - **Go:** the level of every group member is a non-secret number in every context, also far away and offline, and valid within 1 second of the roster event; a hostile player 10 or more levels higher returns `-1`.
 - **Revise:** levels secret, `0` or missing for far or offline members: trigger G uses the last level seen (cached per GUID) or the level the member's own client reports; `-1` never returned (or returned for other reasons): the A1 rule cannot treat `-1` as "+10".
 - **Changes:** [SPEC-02 §8.6.1](../specs/SPEC-02-progression-scoring.md) (trigger G, the note on `-1`), §8.6.3 (`c.gmx` recomputed by peers), `Domain/Boost.lua` (M1.9).
+- **How the probe runs it (M0.3, `Checks_AntiBoost.lua`):** `/azpp run V19` in each context, with the group formed: it reads `UnitLevel` of every member, sorted by where the member is (`near` = `UnitIsVisible`, `far` = connected but not visible, `offline` = `UnitIsConnected` false) and by what the level is (`valid`, `zero`, `minus1`, `negative`, `secret`, `nil`, `error`), counts the members 10 or more levels above the player, and reads `target` and `nameplate1..40` for hostile players (`UnitIsPlayer` and `UnitCanAttack`): `-1`, readable and 10+ higher, readable and closer. The run covers the context when the player is in a group. From login on, `GROUP_ROSTER_UPDATE` logs the group size and the delay since the previous one; when the group grows, the levels are read again 0, 1 and 3 seconds later; `UNIT_LEVEL` logs the level of the player and of group members with the delay since the roster event; `PLAYER_LEVEL_UP` logs the new level next to `UnitLevel("player")`. **Result:** `fail` when a member level was secret, 0 or -1 (in a run or 3 seconds after a roster change), invalid 1 second after a roster change, a hostile player 10+ higher was readable instead of `-1`, or a non-hostile player returned `-1`; `pass` when none of these happened, W, D, R and BG are covered, a +10 member was seen near, far and offline and a hostile `-1` was seen; `todo` otherwise.
 
 ### V20: `sourceUnit` of the auras on the player
 
@@ -147,6 +155,7 @@ The go / revise decision of each area of the [M0 exit criterion](../roadmap/M0-s
 - **Go:** in the open world, in and out of combat, `sourceUnit` of a helpful aura cast by another player is readable and its level can be read.
 - **Revise:** `sourceUnit` secret in combat: trigger A3 is dropped or limited to auras received in the 60 seconds before combat; secret everywhere: A3 is dropped and the rule relies on G, A1 and A2.
 - **Changes:** [SPEC-02 §8.6.1](../specs/SPEC-02-progression-scoring.md) (trigger A3), question Q12 of [SPEC-11](../specs/SPEC-11-risks-open-questions.md) (the 60-second window).
+- **How the probe runs it (M0.3, `Checks_AntiBoost.lua`):** `UNIT_AURA` of the player is watched from login on (`RegisterUnitEvent`): the shape of the first `updateInfo` is logged once; every aura in `addedAuras` (and every helpful aura on an `isFullUpdate`, at most every 2 seconds) is read field by field (`auraInstanceID`, `sourceUnit`, `isFromPlayerOrPlayerPet`, `spellId`, `isHelpful`), next to the prediction of `C_Secrets.ShouldUnitAuraInstanceBeSecret`. A readable `sourceUnit` is a unit token, written as its kind (`nameplateN`, `partyN`, ...), and classed `self`, `group`, `other` (an out-of-group player) or `npc`; for `group` and `other` the caster's level and its difference from the player's are read. Auras not cast by the player are logged one line each with the combat state; the counters are kept per context. An aura from another player (or with a secret source) covers the current context, one from an out-of-group player also `2C`. `/azpp run V20` reads every helpful aura with `GetAuraDataByIndex` and logs `ShouldAurasBeSecret`. **Result:** `fail` when `sourceUnit` was secret in W or WC, or the level of an out-of-group caster was unreadable there; `pass` when neither happened, every context is covered and in both W and WC at least one buff from an out-of-group player had its level read; `todo` otherwise. D and DB are recorded for contrast only.
 
 ### V21: `nameplateNtarget` and `targettarget` comparisons
 
@@ -155,6 +164,7 @@ The go / revise decision of each area of the [M0 exit criterion](../roadmap/M0-s
 - **Go:** the comparisons are non-secret in the open world, in combat; a scan of 20 plates costs well under the 2 Hz budget of [SPEC-01 §17](../specs/SPEC-01-platform-architecture.md).
 - **Revise:** comparisons secret or refused in combat: triggers A1 and A2 are dropped, the rule relies on G (and A3 if V20 passes); too expensive: lower scan rate or fewer plates.
 - **Changes:** [SPEC-02 §8.6.1](../specs/SPEC-02-progression-scoring.md) (triggers A1, A2), [SPEC-01 §17](../specs/SPEC-01-platform-architecture.md) (anti-boost scan budget).
+- **How the probe runs it (M0.3, `Checks_AntiBoost.lua`):** one scan reads `nameplate1..40` and, for every plate with a target, compares `nameplateNtarget` with `target` and with `player`; it compares `targettarget` with every friendly out-of-group player plate (`UnitIsPlayer`, not `UnitCanAttack`, not in the group) and with `player`. Every comparison tallies `UnitIsUnit` (`true`, `false`, `secret`, `error`, ...) under a short key (`P` friendly player plate, `E` enemy player, `N` NPC; `>tgt`, `>me`, `tt=P`, `tt=me`) together with `CanCompareUnitTokens` and `ShouldUnitComparisonBeSecret`; the plate units add `UnitIsPlayer`, `UnitAffectingCombat` and `UnitLevel` shapes. A1 is a friendly out-of-group player whose target is the player's target or the player; A2 is the player's target attacking such a player; both are also counted for helpers 10+ levels higher (or at `-1`). The cost of the scan is measured with `debugprofilestop()`. `/azpp run V21` does one scan; `/azpp assist [seconds]` does two per second for a window (start it before the pull) and logs the scans with a signal or a refused comparison (identical ones once, at most 20 lines). A scan with at least one comparison covers the context, and also `2C` in W or WC when a friendly out-of-group player plate is visible. **Result:** `fail` when a comparison was secret or refused in W or WC, or a scan cost more than 1 ms (the probe's reading of "well under the budget"; the real number is in the logs); `pass` when neither happened, every context is covered and WC has seen both an A1 and an A2 signal from a +10 helper; `todo` otherwise.
 
 ## M0.4: nameplates, tooltip, menus, chat
 
