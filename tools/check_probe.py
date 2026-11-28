@@ -6,9 +6,13 @@
   3. The check registry (Checks.lua) has each of V1-V21 and L exactly once.
   4. The load order: AzPr_Probe.lua first, Checks.lua second, then the Checks_<area>.lua files (they call
      Probe:Implement on registered checks); each of those files starts from the probe table (_G.AzPr_Probe).
-  5. The checks of the steps done so far (IMPLEMENTED: M0.3 and M0.4) have their code: Probe:Implement("<id>", ...)
-     exactly once each, and no other check has any (the others stay stubs until their step).
-  6. The rules above behave as documented (a few fixed cases).
+  5. The checks of the steps done so far (IMPLEMENTED: M0.3, M0.4 and M0.5) have their code: Probe:Implement("<id>",
+     ...) exactly once each, and no other check has any (the others stay stubs until their step).
+  6. Addon messages use only the test prefix (from M0.5): in every Lua file of the probe, each call of
+     SendAddonMessage, SendAddonMessageLogged or RegisterAddonMessagePrefix (direct, or as the function passed to
+     Probe.Call / pcall) takes Probe.TEST_PREFIX, or a local PREFIX bound to it, as its prefix; and no file contains the
+     real prefix of the addon.
+  7. The rules above behave as documented (a few fixed cases).
 
 Usage: python -I -X utf8 tools/check_probe.py      (exit code 0 = all good, 1 = problems, listed one per line)
 """
@@ -23,12 +27,16 @@ INTERFACE = "16001"
 SAVED = "AzPr_ProbeDB"
 IDS = [f"V{n}" for n in range(1, 22)] + ["L"]
 ENTRY = re.compile(r'^\s*\{\s*"(V\d+|L)"\s*,', re.M)
-# The checks that have their code, step by step (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13). A step that
-# implements a check adds it here.
-IMPLEMENTED = ["V1", "V2", "V3", "V12", "V13", "V19", "V20", "V21"]
+# The checks that have their code, step by step (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13; M0.5: V4, V5,
+# V14). A step that implements a check adds it here.
+IMPLEMENTED = ["V1", "V2", "V3", "V4", "V5", "V12", "V13", "V14", "V19", "V20", "V21"]
 IMPLEMENT = re.compile(r'Implement\(\s*(?:"(\w+)"|(\w+))\s*,')
 CONSTANT = re.compile(r'^local\s+(\w+)\s*=\s*"(V\d+|L)"\s*$', re.M)
 GUARD = "_G.AzPr_Probe"
+# The prefix argument of the addon-message calls: the first token after "SendAddonMessage(" or "SendAddonMessage,"
+PREFIX_CALL = re.compile(r'\b(?:SendAddonMessage(?:Logged)?|RegisterAddonMessagePrefix)\s*[(,]\s*([^,\s)]+)')
+PREFIX_LOCAL = re.compile(r'^local\s+PREFIX\s*=\s*Probe\.TEST_PREFIX\b', re.M)
+REAL_PREFIX = "AZPRES"  # SPEC-06 section 12.1: the probe never sends or registers it
 
 
 def toc_problems(toc, files):
@@ -96,6 +104,20 @@ def implement_problems(sources, implemented=None):
     return problems
 
 
+def prefix_problems(sources):
+    """sources: {file name: text} of every Lua file of the probe."""
+    problems = []
+    for name, text in sorted(sources.items()):
+        code = re.sub(r"--[^\n]*", "", text)  # comments may name the calls freely
+        for arg in PREFIX_CALL.findall(code):
+            if arg == "Probe.TEST_PREFIX" or (arg == "PREFIX" and PREFIX_LOCAL.search(code)):
+                continue
+            problems.append(f"{name} sends or registers an addon prefix other than the test prefix ({arg})")
+        if REAL_PREFIX in text:
+            problems.append(f"{name} contains the real prefix of the addon ({REAL_PREFIX})")
+    return problems
+
+
 def self_cases():
     good = f"## Interface: {INTERFACE}\n## SavedVariables: {SAVED}\n\n# comment\nA.lua\n"
     registry = "\n".join(f'    {{ "{i}", "x" }},' for i in IDS)
@@ -121,6 +143,17 @@ def self_cases():
         ("missing, extra, twice, no guard", implement_problems({"A": impl + 'Probe:Implement("V2", f)\n',
                                                                "B": 'Probe:Implement("V20", f)'}, done), 4),
     ]
+    bound = "local PREFIX = Probe.TEST_PREFIX\n"
+    good_calls = (bound + "call(C_ChatInfo.SendAddonMessage, PREFIX, t, d)\n"
+                  "C_ChatInfo.RegisterAddonMessagePrefix(Probe.TEST_PREFIX)\n"
+                  '-- SendAddonMessage("x") in a comment\nlocal r = Enum.SendAddonMessageResult\n')
+    cases += [
+        ("test prefix", prefix_problems({"A": good_calls}), 0),
+        # a literal prefix; PREFIX not bound to the test prefix; the real prefix in a string
+        ("other prefixes", prefix_problems({"A": 'C_ChatInfo.SendAddonMessage("Other", t)\n',
+                                            "B": 'local PREFIX = "AZPRES"\n'
+                                                 "pcall(C_ChatInfo.SendAddonMessageLogged, PREFIX)\n"}), 3),
+    ]
     return [f"self case '{label}' gave {len(got)} problem(s), expected {n}" for label, got, n in cases
             if len(got) != n]
 
@@ -144,6 +177,8 @@ def check(problems):
         found.extend(f"tools/probe/{NAME}/{NAME}.toc: {p}" for p in order_problems(read(NAME + ".toc")))
     sources = {name: read(name) for name in sorted(files) if re.fullmatch(r"Checks_\w+\.lua", name)}
     found.extend(f"tools/probe/{NAME}: {p}" for p in implement_problems(sources))
+    lua = {name: read(name) for name in sorted(files) if name.endswith(".lua")}
+    found.extend(f"tools/probe/{NAME}: {p}" for p in prefix_problems(lua))
     problems.extend(found)
 
 

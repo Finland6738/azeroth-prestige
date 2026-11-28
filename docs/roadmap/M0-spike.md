@@ -98,8 +98,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: §3.3 V4, V5, V14; §12
 - Scope: `/azpp ping guild|party|raid|whisper <name>|channel`, pong replies, bursts to measure the throttle per distribution, every `Enum.SendAddonMessageResult`; joining a hidden custom channel (`JoinTemporaryChannel`), member counts, cross-faction delivery, removal from chat frames; `InChatMessagingLockdown()` snapshots in the open world, in combat, in a dungeon, during a boss and in a battleground; `C_EncodingUtil` serialize, compress, base64 roundtrip with sizes; a trial account if available.
 - Done when:
-  - [ ] Offline: the checks and commands exist; `check_docs.py` passes.
+  - [x] Offline: the checks and commands exist; `check_docs.py` passes.
   - [ ] V4, V5, V14 answered; safe send rates per distribution written. *(in game, two clients)*
+  - *Done (offline):* V4, V5 and V14 in [`Checks_Messaging.lua`](../../tools/probe/AzPr_Probe/Checks_Messaging.lua) with `/azpp ping|pong|burst|size|channel|lockdown|encsend|msgs`, the two-client procedure in [`docs/spike/README.md`](../spike/README.md); `check_probe.py` also checks the test prefix. Not run in the client yet.
 - Tests: the probe's Python file check.
 - Docs: CHANGELOG.
 - Real client: everything (two clients, two factions for cross-faction).
