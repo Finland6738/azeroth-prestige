@@ -84,8 +84,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: §3.3 V2, V3, V12, V13; §14.4
 - Scope: `UnitName`/`UnitGUID` on nameplate and tooltip units inside and outside instances (secret or not); `C_NamePlate.GetNamePlateForUnit` and `IsForbidden()` for friendly and enemy plates in the world, a dungeon and a battleground; a test texture anchored to a plate; `TooltipDataProcessor.AddTooltipPostCall` for units; `Menu.ModifyMenu("MENU_UNIT_PLAYER")` with a harmless entry; `ChatFrameUtil.AddMessageEventFilter` or `ChatFrame_AddMessageEventFilter` with a `|T...|t` prefix; any `ADDON_ACTION_BLOCKED` or `ADDON_ACTION_FORBIDDEN` recorded.
 - Done when:
-  - [ ] Offline: the checks exist; `check_docs.py` passes.
+  - [x] Offline: the checks exist; `check_docs.py` passes.
   - [ ] V2, V3, V12, V13 answered; taint events listed. *(in game)*
+  - *Done (offline):* V2, V3, V12 and V13 in [`Checks_BadgeSurfaces.lua`](../../tools/probe/AzPr_Probe/Checks_BadgeSurfaces.lua), with the test texture on the plates, the chat filter, the tooltip line, the menu entry, blocked actions attributed per surface and `/azpp surfaces` to switch each one off; `tools/check_probe.py` expects their code. Not run in the real client yet.
 - Tests: the probe's Python file check.
 - Docs: CHANGELOG.
 - Real client: everything.

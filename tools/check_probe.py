@@ -6,8 +6,8 @@
   3. The check registry (Checks.lua) has each of V1-V21 and L exactly once.
   4. The load order: AzPr_Probe.lua first, Checks.lua second, then the Checks_<area>.lua files (they call
      Probe:Implement on registered checks); each of those files starts from the probe table (_G.AzPr_Probe).
-  5. The checks of the steps done so far (IMPLEMENTED) have their code: Probe:Implement("<id>", ...) exactly once each,
-     and no other check has any (the others stay stubs until their step).
+  5. The checks of the steps done so far (IMPLEMENTED: M0.3 and M0.4) have their code: Probe:Implement("<id>", ...)
+     exactly once each, and no other check has any (the others stay stubs until their step).
   6. The rules above behave as documented (a few fixed cases).
 
 Usage: python -I -X utf8 tools/check_probe.py      (exit code 0 = all good, 1 = problems, listed one per line)
@@ -23,8 +23,9 @@ INTERFACE = "16001"
 SAVED = "AzPr_ProbeDB"
 IDS = [f"V{n}" for n in range(1, 22)] + ["L"]
 ENTRY = re.compile(r'^\s*\{\s*"(V\d+|L)"\s*,', re.M)
-# The checks that have their code, step by step (M0.3: V1, V19, V20, V21). A step that implements a check adds it here.
-IMPLEMENTED = ["V1", "V19", "V20", "V21"]
+# The checks that have their code, step by step (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13). A step that
+# implements a check adds it here.
+IMPLEMENTED = ["V1", "V2", "V3", "V12", "V13", "V19", "V20", "V21"]
 IMPLEMENT = re.compile(r'Implement\(\s*(?:"(\w+)"|(\w+))\s*,')
 CONSTANT = re.compile(r'^local\s+(\w+)\s*=\s*"(V\d+|L)"\s*$', re.M)
 GUARD = "_G.AzPr_Probe"
@@ -82,14 +83,16 @@ def implemented_ids(lua):
     return ids
 
 
-def implement_problems(sources):
-    """sources: {file name: text} of the Checks_<area>.lua files."""
+def implement_problems(sources, implemented=None):
+    """sources: {file name: text} of the Checks_<area>.lua files; implemented: the ids that must have code (by default
+    IMPLEMENTED)."""
+    implemented = IMPLEMENTED if implemented is None else implemented
     problems = [f"{name} does not start from the probe table ({GUARD})" for name, text in sorted(sources.items())
                 if GUARD not in text]
     ids = [i for text in sources.values() for i in implemented_ids(text)]
-    problems += [f"check {i} has Probe:Implement {ids.count(i)} times, expected once" for i in IMPLEMENTED
+    problems += [f"check {i} has Probe:Implement {ids.count(i)} times, expected once" for i in implemented
                  if ids.count(i) != 1]
-    problems += [f"check {i} has code but is not in IMPLEMENTED" for i in sorted(set(ids) - set(IMPLEMENTED))]
+    problems += [f"check {i} has code but is not in IMPLEMENTED" for i in sorted(set(ids) - set(implemented))]
     return problems
 
 
@@ -111,11 +114,12 @@ def self_cases():
     ]
     guard = f"local Probe = {GUARD}\n"
     impl = guard + 'Probe:Implement("V1", f)\nlocal V19 = "V19"\nProbe:Implement(V19, f)\nProbe:Implement("V20", f)\n'
+    done = ["V1", "V19", "V20", "V21"]  # a fixed list, so that the cases do not change with IMPLEMENTED
     cases += [
-        ("good implementations", implement_problems({"A": impl, "B": guard + 'Probe:Implement("V21", f)'}), 0),
-        # V21 missing, V2 not in IMPLEMENTED, V20 twice, B without the guard
+        ("good implementations", implement_problems({"A": impl, "B": guard + 'Probe:Implement("V21", f)'}, done), 0),
+        # V21 missing, V2 not in the list, V20 twice, B without the guard
         ("missing, extra, twice, no guard", implement_problems({"A": impl + 'Probe:Implement("V2", f)\n',
-                                                               "B": 'Probe:Implement("V20", f)'}), 4),
+                                                               "B": 'Probe:Implement("V20", f)'}, done), 4),
     ]
     return [f"self case '{label}' gave {len(got)} problem(s), expected {n}" for label, got, n in cases
             if len(got) != n]
