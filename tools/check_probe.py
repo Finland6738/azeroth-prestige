@@ -6,15 +6,16 @@
   3. The check registry (Checks.lua) has each of V1-V21 and L exactly once.
   4. The load order: AzPr_Probe.lua first, Checks.lua second, then the Checks_<area>.lua files (they call
      Probe:Implement on registered checks); each of those files starts from the probe table (_G.AzPr_Probe).
-  5. The checks of the steps done so far (IMPLEMENTED: M0.3, M0.4 and M0.5) have their code: Probe:Implement("<id>",
-     ...) exactly once each, and no other check has any (the others stay stubs until their step).
+  5. Every check has its code (since M0.7 no stub is left): Probe:Implement("<id>", ...) exactly once for each of V1-V21
+     and L, and for no other id.
   6. Addon messages use only the test prefix (from M0.5): in every Lua file of the probe, each call of
      SendAddonMessage, SendAddonMessageLogged or RegisterAddonMessagePrefix (direct, or as the function passed to
      Probe.Call / pcall) takes Probe.TEST_PREFIX, or a local PREFIX bound to it, as its prefix; and no file contains the
      real prefix of the addon.
   7. The probe only listens and asks (from M0.6): no Lua file of the probe names, outside comments and strings, a game
      function that acts for the player (quests, duels, trades, mail, flights, professions, auctions, battlefields, the
-     encounter journal selection) or changes a setting.
+     encounter journal selection, interactions, cinematics, death and resurrection, calendar events) or changes a setting
+     (CVars and console commands included).
   8. The rules above behave as documented (a few fixed cases).
 
 Usage: python -I -X utf8 tools/check_probe.py      (exit code 0 = all good, 1 = problems, listed one per line)
@@ -30,10 +31,9 @@ INTERFACE = "16001"
 SAVED = "AzPr_ProbeDB"
 IDS = [f"V{n}" for n in range(1, 22)] + ["L"]
 ENTRY = re.compile(r'^\s*\{\s*"(V\d+|L)"\s*,', re.M)
-# The checks that have their code, step by step (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13; M0.5: V4, V5,
-# V14; M0.6: V6-V11, V18, L). A step that implements a check adds it here.
-IMPLEMENTED = ["V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10", "V11", "V12", "V13", "V14", "V18", "V19",
-               "V20", "V21", "L"]
+# The checks that must have their code: all of them since M0.7 (M0.3: V1, V19, V20, V21; M0.4: V2, V3, V12, V13; M0.5:
+# V4, V5, V14; M0.6: V6-V11, V18, L; M0.7: V15, V16, V17).
+IMPLEMENTED = IDS
 IMPLEMENT = re.compile(r'Implement\(\s*(?:"(\w+)"|(\w+))\s*,')
 CONSTANT = re.compile(r'^local\s+(\w+)\s*=\s*"(V\d+|L)"\s*$', re.M)
 GUARD = "_G.AzPr_Probe"
@@ -54,7 +54,14 @@ ACTIONS = [
     "PostItem", "PostCommodity", "PlaceBid", "CancelAuction", "ConfirmPostItem", "ConfirmCommoditiesPurchase",
     "JoinBattlefield", "AcceptBattlefieldPort", "LeaveBattlefield",
     "EJ_SelectInstance", "EJ_SelectEncounter", "EJ_SelectTier", "EJ_SetDifficulty",
-    "SetCVar",
+    "ClearInteraction", "ConfirmationInteraction", "InteractUnit", "ReopenInteraction",
+    "StopCinematic", "CinematicFrame_CancelCinematic", "OpeningCinematic", "MouseOverrideCinematicDisable", "StartMovie",
+    "StopMovie", "TaxiRequestEarlyLanding",
+    "RepopMe", "RetrieveCorpse", "AcceptResurrect", "UseSelfResurrectOption",
+    "CreatePlayerEvent", "CreateGuildSignUpEvent", "CreateGuildAnnouncementEvent", "CreateCommunitySignUpEvent",
+    "EventSignUp", "EventInvite", "RemoveEvent",
+    "SetCVar", "SetCVarBitfield", "SetTempCVar", "RemoveTempCVar", "ResetTestCVars", "RegisterCVar", "SetCVarToDefault",
+    "SetCVarTable", "SetCVarTableValue", "ConsoleExec", "RunMacroText",
 ]
 ACTION = re.compile(r"\b(" + "|".join(ACTIONS) + r")\b")
 # Lua comments and quoted strings, removed before looking for those names (the probe may write them in a log, and it
@@ -193,6 +200,9 @@ def self_cases():
         ("only listening", action_problems({"A": listening}), 0),
         # a direct call, and a function passed to Probe.Call
         ("acting", action_problems({"A": "AcceptTrade()\n", "B": "call(C_TradeSkillUI.CraftRecipe, 1)\n"}), 2),
+        # reading a CVar and writing the command the owner types are fine; setting it, or running it, is not
+        ("reading a CVar", action_problems({"A": 'call(C_CVar.GetCVarInfo, n)\nprint("/console x 1")\n'}), 0),
+        ("setting a CVar", action_problems({"A": 'C_CVar.SetCVar("x", 1)\nConsoleExec("x 1")\n'}), 2),
     ]
     return [f"self case '{label}' gave {len(got)} problem(s), expected {n}" for label, got, n in cases
             if len(got) != n]

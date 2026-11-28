@@ -1,7 +1,7 @@
--- AzPr Probe: the check registry (V1-V21 and L), stubs until steps M0.3-M0.7 implement them.
+-- AzPr Probe: the check registry (V1-V21 and L); steps M0.3-M0.7 give every check its code.
 -- Adapted from Azeroth Accord (the stub table of tools/probe/AzAc_Probe/AzAc_Probe.lua), same owner, GPL-3.0 (ADR 0013).
--- Ids, areas and required contexts come from docs/spike/README.md. A later step adds a Checks_<area>.lua file to the
--- TOC, after this one, and gives its checks their code with Probe:Implement(id, fn).
+-- Ids, areas and required contexts come from docs/spike/README.md. The Checks_<area>.lua files, listed in the TOC after
+-- this one, give the checks their code with Probe:Implement(id, fn).
 
 local Probe = _G.AzPr_Probe
 if not Probe then

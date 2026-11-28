@@ -126,8 +126,9 @@ The probe addon `AzPr_Probe` lives in `tools/probe/`, is **never distributed**, 
 - Spec: §3.3 V15-V17; §13.5; §15.3
 - Scope: `PLAYER_INTERACTION_MANAGER_FRAME_SHOW/HIDE` types, `UnitOnTaxi`, boats and zeppelins, `CINEMATIC_*`, `LOADING_SCREEN_*`, `C_Calendar` access; the CVars that force addon restrictions in tests; Hardcore realm detection (game rules API) and `PLAYER_DEAD` on a Hardcore character.
 - Done when:
-  - [ ] Offline: the checks exist; `check_docs.py` passes.
+  - [x] Offline: the checks exist; `check_docs.py` passes.
   - [ ] V15, V16, V17 answered. *(in game)*
+  - *Done (offline):* V15 in [`Checks_UiState.lua`](../../tools/probe/AzPr_Probe/Checks_UiState.lua) with `/azpp uiwatch`, V16 in [`Checks_Restrictions.lua`](../../tools/probe/AzPr_Probe/Checks_Restrictions.lua) with `/azpp cvar` (read only: the owner types the commands), V17 in [`Checks_Hardcore.lua`](../../tools/probe/AzPr_Probe/Checks_Hardcore.lua) with `/azpp hardcore`; every check of the probe now has its code and `tools/check_probe.py` requires it. Not run in the real client yet.
 - Tests: the probe's Python file check.
 - Docs: CHANGELOG.
 - Real client: everything.
